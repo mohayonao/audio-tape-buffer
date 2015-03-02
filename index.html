@@ -17,7 +17,9 @@
   </style>
   <script src="//cdn.jsdelivr.net/es6-promise/1.0.0/promise.min.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/vue/0.11.4/vue.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2014-11-29/FileSaver.min.js"></script>
   <script src="./build/ciseaux.min.js"></script>
+  <script src="./audio-export.js"></script>
 </head>
 <body>
   <div class="container">
@@ -43,6 +45,7 @@
             <div class="row">
               <div class="col-md-1">
                 <button v-on="click: play(name)" class="btn btn-default">{{ nowPlaying === name ? "Stop" : "Start" }}</button>
+                <button v-on="click: exportAudioFile(name)" class="btn btn-default">Export</button>
               </div>
               <div class="col-md-7">
                 <pre class="code">{{ src }}</pre>
@@ -144,6 +147,31 @@
         return result;
       };
 
+      TapePlayer.prototype.exportAudioFile = function(name) {
+        var result = true;
+        var data = this._db[name];
+        if (data) {
+          window.tape = null;
+          eval.call(null, data.src);
+
+          if (window.tape) {
+            var _this = this;
+            window.tape.render(this.audioContext, 2).then(function(audioBuffer) {
+              _this.draw(name, audioBuffer);
+
+              var audioExport = new AudioExport(audioBuffer);
+              var blob = audioExport.toWaveBlob();
+              saveAs(blob, name + ".wav");
+            });
+            result = true;
+          }
+
+          window.tape = null;
+        }
+
+        return result;
+      };
+
       TapePlayer.prototype.stop = function() {
         if (this.bufSrc !== null) {
           this.bufSrc.stop(this.audioContext.currentTime);
@@ -217,6 +245,11 @@
           } else {
             this.nowPlaying = "";
           }
+        },
+        exportAudioFile: function(name) {
+          player.chore().stop();
+          this.nowPlaying = "";
+          player.exportAudioFile(name);
         }
       }
     });
